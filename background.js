@@ -64,7 +64,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 console.log(full_string);
                 middle = Math.floor(full_string.length / 2);
                 half_string = full_string.substr(0, middle);
-                channel_name = half_string.trim();
+                channel_name = half_string.trim().split(" ");
 
                 new_edition = channel_name;
 
