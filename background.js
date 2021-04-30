@@ -37,17 +37,18 @@ async function setLocalStorageValue(value) {
     });
 }
 
-
 async function getChannelName(id) {
     return chrome.scripting.executeScript({
         target: {tabId: id, allFrames: true},
         function() {
-            content = document.getElementById("content");
-            channel_name = content.getElementsByClassName("ytd-channel-name")[0];
-            // alert(channel_name.textContent);
-            return channel_name.textContent;
+            header = document.getElementById("channel-name");
+            return header.textContent;
         }
     });
+}
+
+async function updateSearch(id, url) {
+    return chrome.tabs.update(id, {url: url});
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -58,7 +59,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             
             channel_name_element = getChannelName(result.id);
             channel_name_element.then(function(result1) {
-                full_string = result1[0].result.replace(/(?:\r\n|\r|\n)/g, '');
+                full_string = result1[0].result.replace(/(?:\r\n|\r|\n)/g, '').replace("Verified", '').trim();
+
+                console.log(full_string);
                 middle = Math.floor(full_string.length / 2);
                 half_string = full_string.substr(0, middle);
                 channel_name = half_string.trim();
@@ -66,13 +69,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 new_edition = channel_name;
 
                 storage = getLocalStorageValue();
-                storage.then(function(result) {
-                    current_search = result.search;
-                    console.log("result.search: " + result.search);
-                    console.log(result.search);
-                    console.log("result.search isArray?: " + Array.isArray(result.search));
+                storage.then(function(result2) {
+                    current_search = result2.search;
                     new_search = [];
-                    if (current_search === undefined || ! Array.isArray(current_search)) {
+                    if (current_search === undefined) {
+                        new_search.push(new_edition);
+                    }
+                    else if (! Array.isArray(current_search)) {
                         new_search.push(new_edition);
                     }
                     else {
@@ -82,10 +85,23 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                         }
                     }
                     new_storage = setLocalStorageValue(new_search);
-                    new_storage.then(function(result) {
-                        console.log(result);
+                    new_storage.then(function(result3) {
                     });
                 });
+            });
+        }
+        if (result.url.includes("youtube.com/results?search_query=")) {
+            storage = getLocalStorageValue();
+            storage.then(function(result1) {
+                search_string = " -".concat(result1.search.join(" -"));
+                new_search_string = encodeURI(search_string.split(' ').join('+'));
+                if (!result.url.includes(new_search_string)) {
+                    console.log("Current URL: " + result.url);
+                    console.log("New URL: " + new_search_string);
+                    refresh_tab = updateSearch(result.id, result.url + new_search_string);
+                    refresh_tab.then(function(result2) {
+                    });
+                }
             });
         }
      });
